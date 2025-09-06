@@ -7,7 +7,7 @@ pipeline {
   }
 
   environment {
-    IMAGE_NAME = "nextflix"
+    IMAGE_NAME = "ravid-netflix"
   }
 
   stages {
