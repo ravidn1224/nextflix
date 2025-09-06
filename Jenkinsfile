@@ -26,8 +26,6 @@ pipeline {
         script {
           if (env.BRANCH_NAME == 'main') {
             env.IMAGE_TAG = "main-${env.BUILD_NUMBER}-${env.SHORT_SHA}"
-          } else if (env.CHANGE_ID) {
-            env.IMAGE_TAG = "pr-${env.CHANGE_ID}-${env.SHORT_SHA}"
           } else {
             env.IMAGE_TAG = "${env.BRANCH_NAME}-${env.SHORT_SHA}"
           }
@@ -40,29 +38,25 @@ pipeline {
       steps {
         sh '''
           docker run --rm -v "$PWD":/app -w /app node:20-alpine \
-            sh -lc "npm ci && npm test || echo '⚠️ Tests skipped (add tests to repo)'"
+            sh -lc "npm ci && npm test || echo '⚠️ No tests or tests failed'"
         '''
       }
     }
 
-    stage('Build Image') {
+    stage('Build Docker Image') {
       steps {
-        sh """
-          docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-        """
+        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
 
-    stage('Deploy STAGING') {
+    stage('Deploy to STAGING') {
       when { branch 'main' }
       steps {
-        sh """
-          TAG=${IMAGE_TAG} docker compose -f docker-compose.staging.yml up -d
-        """
+        sh "TAG=${IMAGE_TAG} docker compose -f docker-compose.staging.yml up -d"
       }
     }
 
-    stage('Deploy PRODUCTION') {
+    stage('Deploy to PRODUCTION (if PR merged)') {
       when {
         allOf {
           branch 'main'
@@ -73,16 +67,14 @@ pipeline {
         }
       }
       steps {
-        sh """
-          TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml up -d
-        """
+        sh "TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml up -d"
       }
     }
   }
 
   post {
     success {
-      echo "✅ Success: ${IMAGE_NAME}:${IMAGE_TAG}"
+      echo "✅ Deployed ${IMAGE_NAME}:${IMAGE_TAG}"
     }
     failure {
       echo "❌ Pipeline failed"
