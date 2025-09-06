@@ -1,0 +1,6 @@
+services:
+  nextflix-prod:
+    image: nextflix:${TAG}
+    ports:
+      - "4000:3000"
+    restart: unless-stopped
